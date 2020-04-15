@@ -1,0 +1,214 @@
+<?php
+
+/**
+ * MvcCore
+ *
+ * This source file is subject to the BSD 3 License
+ * For the full copyright and license information, please view
+ * the LICENSE.md file that are distributed with this source code.
+ *
+ * @copyright	Copyright (c) 2016 Tom Flídr (https://github.com/mvccore/mvccore)
+ * @license  https://mvccore.github.io/docs/mvccore/5.0.0/LICENCE.md
+ */
+
+namespace MvcCore\Ext\Configs;
+
+class Cached extends \MvcCore\Config
+{
+    protected static $cache = NULL;
+
+    /**
+	 * Cache ttl used to cache config files,
+	 * `NULL` means unlimited time, by default.
+	 * @var int|NULL
+     */
+    protected static $ttl = NULL;
+
+    /**
+	 * Cache tags used to cache config files,
+	 * `['config']` as default.
+	 * @var \string[]
+     */
+    protected static $tags = ['config'];
+
+    /**
+	 * Array with each key as environment name
+	 * and values as another environment names necessary
+	 * to also keep in cached config.
+     * @var array
+     */
+    protected static $environmentGroups = [];
+
+	/**
+	 * Set cache ttl used to cache config files,
+	 * `NULL` means unlimited time, by default.
+	 * @param int|NULL $ttl
+	 * @return void
+	 */
+    public static function SetTtl ($ttl) {
+		static::$ttl = $ttl;
+	}
+
+    /**
+	 * Get cache ttl used to cache config files,
+	 * `NULL` means unlimited time, by default.
+	 * @return int|NULL
+     */
+    public static function GetTtl () {
+		return static::$ttl;
+	}
+
+	/**
+	 * Set cache tags used to cache config files,
+	 * `['config']` as default.
+	 * @param \string[] $tags
+	 * @return void
+	 */
+    public static function SetTags ($tags) {
+		static::$tags = $tags;
+	}
+
+    /**
+	 * Get cache tags used to cache config files,
+	 * `['config']` as default.
+     * @return \string[]
+     */
+    public static function GetTags () {
+		return static::$tags;
+	}
+
+	/**
+	 * Set array with each key as environment name
+	 * and values as another environment names necessary
+	 * to also keep in cached config.
+	 * @param array $environmentGroups
+	 * @return void
+	 */
+    public static function SetEnvironmentGroups (array $environmentGroups = []) {
+		static::$environmentGroups = $environmentGroups;
+	}
+
+    /**
+     * Get array with each key as environment name
+	 * and values as another environment names necessary
+	 * to also keep in cached config.
+     * @return array
+     */
+    public static function GetEnvironmentGroups () {
+		return static::$environmentGroups;
+	}
+
+    /**
+	 * Try to load from cache or from hdd and parse config file by app root relative path.
+	 * If config contains system data, try to detect environment.
+	 * @param string $configFullPath
+	 * @param string $systemConfigClass
+	 * @param bool   $isSystemConfig
+	 * @return \MvcCore\Config|\MvcCore\IConfig|bool
+	 */
+	protected static function getConfigInstance ($configFullPath, $systemConfigClass, $isSystemConfig = FALSE) {
+		$cache = static::getCache();
+		if ($cache === NULL)
+			return parent::getConfigInstance($configFullPath, $systemConfigClass, $isSystemConfig);
+		$cacheKey = static::getCacheKey($configFullPath);
+
+		/** @var $config \MvcCore\IConfig|NULL */
+		$config = $cache->Load($cacheKey);
+
+		if (!$config) {
+			$config = parent::getConfigInstance($configFullPath, $systemConfigClass, $isSystemConfig);
+			$environment = static::detectEnvironment($config, FALSE);
+			static::computeEnvironmentData($config, $environment->GetName());
+			static::cacheConfig($cache, $cacheKey, $config);
+
+		} else {
+			$environment = static::detectEnvironment($config, FALSE);
+			if ($environment->IsDevelopment()) {
+				clearstatcache(TRUE, $configFullPath);
+				$lastModTime = filemtime($configFullPath);
+				if ($lastModTime > $config->GetLastChanged()) {
+					$config = parent::getConfigInstance($configFullPath, $systemConfigClass, $isSystemConfig);
+					$environment = static::detectEnvironment($config, TRUE);
+					static::computeEnvironmentData($config, $environment->GetName());
+					static::cacheConfig($cache, $cacheKey, $config);
+				}
+			}
+		}
+
+		return $config;
+	}
+
+	/**
+	 * Complete config merged data collection records for all necessary environments.
+	 * @param \MvcCore\IConfig $config
+	 * @param string|NULL $envName
+	 */
+	protected static function computeEnvironmentData (\MvcCore\IConfig $config, $envName) {
+		if ($envName === NULL) return;
+		$envNamesToCache = [$envName];
+		if (isset(static::$environmentGroups[$envName]))
+			$envNamesToCache = array_unique(array_merge(
+				$envNamesToCache, static::$environmentGroups[$envName]
+			));
+		foreach ($envNamesToCache as $envNameToCache)
+			$config->GetData($envNameToCache);
+	}
+
+	/**
+	 * Cache completed configuration file.
+	 * @param \MvcCore\Ext\ICache $cache
+	 * @param string              $cacheKey
+	 * @param \MvcCore\IConfig    $config
+	 * @return bool
+	 */
+	protected static function cacheConfig (\MvcCore\Ext\ICache $cache, $cacheKey, \MvcCore\IConfig $config) {
+		return $cache->Save($cacheKey, $config, static::$ttl, static::$tags);
+	}
+
+	/**
+	 * Detect environment if necessary and returns it's name.
+	 * @param \MvcCore\IConfig $config
+	 * @param bool             $force
+	 * @return \MvcCore\IEnvironment
+	 */
+	protected static function detectEnvironment (\MvcCore\IConfig $config, $force = FALSE) {
+		$app = parent::$app ?: parent::$app = \MvcCore\Application::GetInstance();
+		$environment = $app->GetEnvironment();
+		$isDetected = $environment->IsDetected();
+		if ($config && (!$isDetected || $force)) {
+			$envDetectionData = & static::GetEnvironmentDetectionData($config);
+			$envName = static::DetectBySystemConfig((array) $envDetectionData);
+			$environment->SetName($envName);
+		}
+		return $environment;
+	}
+
+	/**
+	 * Get cache key by config fullpath.
+	 * @param string $configFullPath
+	 * @return string
+	 */
+	protected static function getCacheKey ($configFullPath) {
+		$app = parent::$app ?: parent::$app = \MvcCore\Application::GetInstance();
+		$appRoot = $app->GetRequest()->GetAppRoot();
+		if (mb_strpos($configFullPath, $appRoot) === 0) {
+			$cacheKey = mb_substr($configFullPath, mb_strlen($appRoot));
+		} else {
+			$cacheKey = str_replace([':', '/'], ['', '_'], $configFullPath);
+		}
+		return $cacheKey;
+	}
+
+	/**
+	 * Get cache store registered as default.
+	 * @param string|NULL $storeName
+	 * @return \MvcCore\Ext\ICache|NULL
+	 */
+	protected static function getCache ($storeName = NULL) {
+		if (static::$cache === NULL) {
+			$cacheClass = '\MvcCore\Ext\Cache';
+			static::$cache = $cacheClass::GetStore($storeName);
+		}
+		return static::$cache;
+	}
+}

@@ -1,0 +1,32 @@
+{
+	"name": "mvccore/ext-config-cached",
+	"type": "library",
+	"description": "MvcCore - Extension - Config - Cached - extension to use cached configuration files across multiple environments.",
+	"keywords": [
+		"mvc", 
+		"mvccore", 
+		"framework", 
+		"extension", 
+		"plugin", 
+		"plug-in", 
+		"ext", 
+		"config", 
+		"configuration", 
+		"cache", 
+		"environments"
+	],
+	"license": ["BSD-3-Clause"],
+	"authors": [{
+		"name": "Tom Flidr",
+		"homepage": "https://github.com/tomFlidr"
+	}],
+	"require": {
+		"php": ">=5.4.0",
+		"mvccore/mvccore": "dev-master",
+		"mvccore/ext-cache": "dev-master"
+	},
+	"autoload": {
+		"classmap": ["src/"]
+	},
+	"minimum-stability": "dev"
+}
