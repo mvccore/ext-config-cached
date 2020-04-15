@@ -174,10 +174,11 @@ class Cached extends \MvcCore\Config
 	protected static function detectEnvironment (\MvcCore\IConfig $config, $force = FALSE) {
 		$app = parent::$app ?: parent::$app = \MvcCore\Application::GetInstance();
 		$environment = $app->GetEnvironment();
+		$envClass = $app->GetEnvironmentClass();
 		$isDetected = $environment->IsDetected();
 		if ($config && (!$isDetected || $force)) {
 			$envDetectionData = & static::GetEnvironmentDetectionData($config);
-			$envName = static::DetectBySystemConfig((array) $envDetectionData);
+			$envName = $envClass::DetectBySystemConfig((array) $envDetectionData);
 			$environment->SetName($envName);
 		}
 		return $environment;
