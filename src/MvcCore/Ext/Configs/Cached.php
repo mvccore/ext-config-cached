@@ -207,7 +207,7 @@ class Cached extends \MvcCore\Config
 	 */
 	protected static function getCache ($storeName = NULL) {
 		if (static::$cache === NULL) {
-			$cacheClass = '\MvcCore\Ext\Cache';
+			$cacheClass = '\\MvcCore\\Ext\\Cache';
 			static::$cache = $cacheClass::GetStore($storeName);
 		}
 		return static::$cache;
