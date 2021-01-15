@@ -7,37 +7,48 @@
  * For the full copyright and license information, please view
  * the LICENSE.md file that are distributed with this source code.
  *
- * @copyright	Copyright (c) 2016 Tom Flídr (https://github.com/mvccore/mvccore)
+ * @copyright	Copyright (c) 2016 Tom Flidr (https://github.com/mvccore)
  * @license  https://mvccore.github.io/docs/mvccore/5.0.0/LICENCE.md
  */
 
 namespace MvcCore\Ext\Configs;
 
-class Cached extends \MvcCore\Config
-{
-    protected static $cache = NULL;
+class Cached extends \MvcCore\Config {
+	
+	/**
+	 * MvcCore Extension - Config - Cached - version:
+	 * Comparison by PHP function version_compare();
+	 * @see http://php.net/manual/en/function.version-compare.php
+	 */
+	const VERSION = '5.0.0';
 
-    /**
+	/**
+	 * Cache instance pointer.
+	 * @var \MvcCore\Ext\ICache
+	 */
+	protected static $cache = NULL;
+
+	/**
 	 * Cache ttl used to cache config files,
 	 * `NULL` means unlimited time, by default.
 	 * @var int|NULL
-     */
-    protected static $ttl = NULL;
+	 */
+	protected static $ttl = NULL;
 
-    /**
+	/**
 	 * Cache tags used to cache config files,
 	 * `['config']` as default.
 	 * @var \string[]
-     */
-    protected static $tags = ['config'];
+	 */
+	protected static $tags = ['config'];
 
-    /**
+	/**
 	 * Array with each key as environment name
 	 * and values as another environment names necessary
 	 * to also keep in cached config.
-     * @var array
-     */
-    protected static $environmentGroups = [];
+	 * @var array
+	 */
+	protected static $environmentGroups = [];
 
 	/**
 	 * Set cache ttl used to cache config files,
@@ -45,16 +56,16 @@ class Cached extends \MvcCore\Config
 	 * @param int|NULL $ttl
 	 * @return void
 	 */
-    public static function SetTtl ($ttl) {
+	public static function SetTtl ($ttl) {
 		static::$ttl = $ttl;
 	}
 
-    /**
+	/**
 	 * Get cache ttl used to cache config files,
 	 * `NULL` means unlimited time, by default.
 	 * @return int|NULL
-     */
-    public static function GetTtl () {
+	 */
+	public static function GetTtl () {
 		return static::$ttl;
 	}
 
@@ -64,16 +75,16 @@ class Cached extends \MvcCore\Config
 	 * @param \string[] $tags
 	 * @return void
 	 */
-    public static function SetTags ($tags) {
+	public static function SetTags ($tags) {
 		static::$tags = $tags;
 	}
 
-    /**
+	/**
 	 * Get cache tags used to cache config files,
 	 * `['config']` as default.
-     * @return \string[]
-     */
-    public static function GetTags () {
+	 * @return \string[]
+	 */
+	public static function GetTags () {
 		return static::$tags;
 	}
 
@@ -84,27 +95,27 @@ class Cached extends \MvcCore\Config
 	 * @param array $environmentGroups
 	 * @return void
 	 */
-    public static function SetEnvironmentGroups (array $environmentGroups = []) {
+	public static function SetEnvironmentGroups (array $environmentGroups = []) {
 		static::$environmentGroups = $environmentGroups;
 	}
 
-    /**
-     * Get array with each key as environment name
+	/**
+	 * Get array with each key as environment name
 	 * and values as another environment names necessary
 	 * to also keep in cached config.
-     * @return array
-     */
-    public static function GetEnvironmentGroups () {
+	 * @return array
+	 */
+	public static function GetEnvironmentGroups () {
 		return static::$environmentGroups;
 	}
 
-    /**
+	/**
 	 * Try to load from cache or from hdd and parse config file by app root relative path.
 	 * If config contains system data, try to detect environment.
 	 * @param string $configFullPath
 	 * @param string $systemConfigClass
 	 * @param bool   $isSystemConfig
-	 * @return \MvcCore\Config|\MvcCore\IConfig|bool
+	 * @return \MvcCore\Config|bool
 	 */
 	protected static function getConfigInstance ($configFullPath, $systemConfigClass, $isSystemConfig = FALSE) {
 		$cache = static::getCache();
@@ -112,7 +123,7 @@ class Cached extends \MvcCore\Config
 			return parent::getConfigInstance($configFullPath, $systemConfigClass, $isSystemConfig);
 		$cacheKey = static::getCacheKey($configFullPath);
 
-		/** @var $config \MvcCore\IConfig|NULL */
+		/** @var $config \MvcCore\Config|NULL */
 		$config = $cache->Load($cacheKey);
 
 		if (!$config) {
@@ -140,7 +151,7 @@ class Cached extends \MvcCore\Config
 
 	/**
 	 * Complete config merged data collection records for all necessary environments.
-	 * @param \MvcCore\IConfig $config
+	 * @param \MvcCore\Config $config
 	 * @param string|NULL $envName
 	 */
 	protected static function computeEnvironmentData (\MvcCore\IConfig $config, $envName) {
@@ -156,9 +167,9 @@ class Cached extends \MvcCore\Config
 
 	/**
 	 * Cache completed configuration file.
-	 * @param \MvcCore\Ext\ICache $cache
-	 * @param string              $cacheKey
-	 * @param \MvcCore\IConfig    $config
+	 * @param \MvcCore\Ext\Cache	$cache
+	 * @param string				$cacheKey
+	 * @param \MvcCore\Config		$config
 	 * @return bool
 	 */
 	protected static function cacheConfig (\MvcCore\Ext\ICache $cache, $cacheKey, \MvcCore\IConfig $config) {
@@ -167,9 +178,9 @@ class Cached extends \MvcCore\Config
 
 	/**
 	 * Detect environment if necessary and returns it's name.
-	 * @param \MvcCore\IConfig $config
-	 * @param bool             $force
-	 * @return \MvcCore\IEnvironment
+	 * @param \MvcCore\Config $config
+	 * @param bool			 $force
+	 * @return \MvcCore\Environment
 	 */
 	protected static function detectEnvironment (\MvcCore\IConfig $config, $force = FALSE) {
 		$app = parent::$app ?: parent::$app = \MvcCore\Application::GetInstance();
@@ -203,7 +214,7 @@ class Cached extends \MvcCore\Config
 	/**
 	 * Get cache store registered as default.
 	 * @param string|NULL $storeName
-	 * @return \MvcCore\Ext\ICache|NULL
+	 * @return \MvcCore\Ext\Cache|NULL
 	 */
 	protected static function getCache ($storeName = NULL) {
 		if (static::$cache === NULL) {
