@@ -114,39 +114,63 @@ class Cached extends \MvcCore\Config {
 	 * If config contains system data, try to detect environment.
 	 * @param string $configFullPath
 	 * @param string $systemConfigClass
-	 * @param bool   $isSystemConfig
+	 * @param int    $configType
 	 * @return \MvcCore\Config|bool
 	 */
-	protected static function getConfigInstance ($configFullPath, $systemConfigClass, $isSystemConfig = FALSE) {
+	public static function LoadConfig ($configFullPath, $systemConfigClass, $configType = \MvcCore\IConfig::TYPE_COMMON) {
+		/** @var $cache \MvcCore\Ext\ICache|NULL */
 		$cache = static::getCache();
 		if ($cache === NULL)
-			return parent::getConfigInstance($configFullPath, $systemConfigClass, $isSystemConfig);
+			return parent::LoadConfig($configFullPath, $systemConfigClass, $configType);
 		$cacheKey = static::getCacheKey($configFullPath);
 
 		/** @var $config \MvcCore\Config|NULL */
 		$config = $cache->Load($cacheKey);
 
 		if (!$config) {
-			$config = parent::getConfigInstance($configFullPath, $systemConfigClass, $isSystemConfig);
-			$environment = static::detectEnvironment($config, FALSE);
-			static::computeEnvironmentData($config, $environment->GetName());
+			$config = parent::LoadConfig($configFullPath, $systemConfigClass, $configType);
+			if ($config !== NULL) {
+				$environment = static::getSysCfgDetectedEnv($config, $configType);
+				static::computeEnvironmentData($config, $environment->GetName());
+			}
 			static::cacheConfig($cache, $cacheKey, $config);
 
 		} else {
-			$environment = static::detectEnvironment($config, FALSE);
+			$environment = static::getSysCfgDetectedEnv($config, $configType);
 			if ($environment->IsDevelopment()) {
 				clearstatcache(TRUE, $configFullPath);
 				$lastModTime = filemtime($configFullPath);
 				if ($lastModTime > $config->GetLastChanged()) {
-					$config = parent::getConfigInstance($configFullPath, $systemConfigClass, $isSystemConfig);
-					$environment = static::detectEnvironment($config, TRUE);
-					static::computeEnvironmentData($config, $environment->GetName());
+					$config = parent::LoadConfig($configFullPath, $systemConfigClass, $configType);
+					if ($config !== NULL) {
+						$environment = static::getSysCfgDetectedEnv($config, $configType);
+						static::computeEnvironmentData($config, $environment->GetName());
+					}
 					static::cacheConfig($cache, $cacheKey, $config);
 				}
 			}
 		}
 
 		return $config;
+	}
+
+	/**
+	 * If config is system, get environment instance by environment section data,
+	 * if config is not system, get environment from application instance.
+	 * @param  \MvcCore\Config $config 
+	 * @param  int             $configType 
+	 * @return \MvcCore\Environment
+	 */
+	protected static function getSysCfgDetectedEnv (\MvcCore\Config $config, $configType = \MvcCore\IConfig::TYPE_COMMON) {
+		$sysCfg = ($configType & \MvcCore\IConfig::TYPE_SYSTEM) != 0;
+		$envCfg = ($configType & \MvcCore\IConfig::TYPE_ENVIRONMENT) != 0;
+		if ($sysCfg || $envCfg) {
+			$environment = static::detectEnvironment($config, FALSE);
+		} else {
+			$app = self::$app ?: (self::$app = \MvcCore\Application::GetInstance());
+			$environment = $app->GetEnvironment();
+		}
+		return $environment;
 	}
 
 	/**
@@ -167,28 +191,29 @@ class Cached extends \MvcCore\Config {
 
 	/**
 	 * Cache completed configuration file.
-	 * @param \MvcCore\Ext\Cache	$cache
-	 * @param string				$cacheKey
-	 * @param \MvcCore\Config		$config
+	 * @param \MvcCore\Ext\Cache   $cache
+	 * @param string               $cacheKey
+	 * @param \MvcCore\Config|NULL $config
 	 * @return bool
 	 */
-	protected static function cacheConfig (\MvcCore\Ext\ICache $cache, $cacheKey, \MvcCore\IConfig $config) {
+	protected static function cacheConfig (\MvcCore\Ext\ICache $cache, $cacheKey, \MvcCore\IConfig $config = NULL) {
 		return $cache->Save($cacheKey, $config, static::$ttl, static::$tags);
 	}
 
 	/**
 	 * Detect environment if necessary and returns it's name.
-	 * @param \MvcCore\Config $config
-	 * @param bool			 $force
+	 * @param \MvcCore\Config|NULL $config
+	 * @param bool			       $force
 	 * @return \MvcCore\Environment
 	 */
-	protected static function detectEnvironment (\MvcCore\IConfig $config, $force = FALSE) {
+	protected static function detectEnvironment (\MvcCore\IConfig $config = NULL, $force = FALSE) {
 		$app = parent::$app ?: parent::$app = \MvcCore\Application::GetInstance();
 		$environment = $app->GetEnvironment();
 		$envClass = $app->GetEnvironmentClass();
 		$isDetected = $environment->IsDetected();
 		if ($config && (!$isDetected || $force)) {
-			$envDetectionData = & static::GetEnvironmentDetectionData($config);
+			$configClass = $app->GetConfigClass();
+			$envDetectionData = & $configClass::GetEnvironmentDetectionData($config);
 			$envName = $envClass::DetectBySystemConfig((array) $envDetectionData);
 			$environment->SetName($envName);
 		}
