@@ -194,9 +194,12 @@ class Cached extends \MvcCore\Config {
 	 * @param \MvcCore\Ext\Cache   $cache
 	 * @param string               $cacheKey
 	 * @param \MvcCore\Config|NULL $config
+	 * @throws \Exception Config to cache it doesn't implement `\MvcCore\IConfig` interface.
 	 * @return bool
 	 */
-	protected static function cacheConfig (\MvcCore\Ext\ICache $cache, $cacheKey, \MvcCore\IConfig $config = NULL) {
+	protected static function cacheConfig (\MvcCore\Ext\ICache $cache, $cacheKey, $config = NULL) {
+		if ($config !== NULL && !($config instanceof \MvcCore\IConfig))
+			throw new \Exception("[" . get_class($this) . "] Config to cache it doesn't implement `\MvcCore\IConfig` interface.");
 		return $cache->Save($cacheKey, $config, static::$ttl, static::$tags);
 	}
 
@@ -204,9 +207,12 @@ class Cached extends \MvcCore\Config {
 	 * Detect environment if necessary and returns it's name.
 	 * @param \MvcCore\Config|NULL $config
 	 * @param bool			       $force
+	 * @throws \Exception Config to detect environment doesn't implement `\MvcCore\IConfig` interface.
 	 * @return \MvcCore\Environment
 	 */
-	protected static function detectEnvironment (\MvcCore\IConfig $config = NULL, $force = FALSE) {
+	protected static function detectEnvironment ($config = NULL, $force = FALSE) {
+		if ($config !== NULL && !($config instanceof \MvcCore\IConfig))
+			throw new \Exception("[" . get_class($this) . "] Config to detect environment doesn't implement `\MvcCore\IConfig` interface.");
 		$app = parent::$app ?: parent::$app = \MvcCore\Application::GetInstance();
 		$environment = $app->GetEnvironment();
 		$envClass = $app->GetEnvironmentClass();
