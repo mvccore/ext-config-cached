@@ -233,7 +233,7 @@ class Cached extends \MvcCore\Config {
 	 */
 	protected static function getCacheKey ($configFullPath) {
 		$app = parent::$app ?: parent::$app = \MvcCore\Application::GetInstance();
-		$appRoot = $app->GetRequest()->GetAppRoot();
+		$appRoot = $app->GetPathAppRoot();
 		if (mb_strpos($configFullPath, $appRoot) === 0) {
 			$cacheKey = mb_substr($configFullPath, mb_strlen($appRoot));
 		} else {
